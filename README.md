@@ -33,3 +33,14 @@ This project contains the MicroPython code for a Raspberry Pi Pico RP2040 to dri
 - leds.py : Controls the RGB neopixel LEDs behind each digit. Consider adding more effects and/or animations, maybe running as a seperate thread in the second core.
 - setings.py : Saves and retrieves the alarm time, display mode and other setting values in the settings.json file below.
 - settings.json : Contains the setting values. This file is written to every time one of the clock settings is changed. settings.json will be created automatically if it does not exist
+
+## Installation
+Use Thonny to upload the following files to the root directory of the Raspberry Pi Pico. Do not copy the fonts directory or its contents.
+- display.py
+- ds3231.py
+- leds.py
+- main.py
+- settings.py
+  
+Open main.py in the Thonny editor and press RUN. The clock will start automatically when rebooted.
+
