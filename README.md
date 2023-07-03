@@ -20,7 +20,7 @@ This project contains the MicroPython code for a Raspberry Pi Pico RP2040 to dri
 - I wanted to animate the RGB LED lighting in the RP2040's second core, but was unable to do this reliably. It would often crash after an hour or so. Maybe this can be revisited some time.
 
 ## Font Files
-- The ten images for the digits 0 to 9 are stored in .raw files. This is explained here: https://www.penguintutor.com/programming/picodisplayanimations . You can create your own set of font files as follows:
+The ten images for the digits 0 to 9 are stored in .raw files. This is explained here: https://www.penguintutor.com/programming/picodisplayanimations . You can create your own set of font files as follows:
 - Create a set of 10 image files at resolution 240 x 135 pixels.
 - Rotate the images anticlockwise 90 degrees and save as .png files 0.png to 9.png
 - Run the conversion program animation_convert.py. This will produce files 0.raw to 9.raw
