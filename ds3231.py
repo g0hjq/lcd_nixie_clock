@@ -64,7 +64,6 @@ class DS3231:
         assert (trim >= 0) and (trim <= 255), "'Set Timing' trim value {0} is out of range".format(trim)
 
         b = bytes([trim-128 & 0xff])
-        print("Setting DS3231 Ageing Offset to 0x{0:02X}".format(b[0]))
         self.Write_Reg(Aging_Reg, b[0])    
         
 

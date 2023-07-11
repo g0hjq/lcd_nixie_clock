@@ -172,6 +172,7 @@ FONT = bytes([
 
 
 
+
 #=================================================================
 #=================================================================
 #=================================================================
@@ -182,20 +183,51 @@ FONT = bytes([
 class Display(framebuf.FrameBuffer):
 
 
+    def rgb_to_int (self,r,g,b):
+        
+        r4 = (r & 0x80) >> 7
+        r3 = (r & 0x40) >> 6
+        r2 = (r & 0x20) >> 5
+        r1 = (r & 0x10) >> 4
+        r0 = (r & 0x08) >> 3
+
+        g5 = (g & 0x80) >> 7
+        g4 = (g & 0x40) >> 6
+        g3 = (g & 0x20) >> 5
+        g2 = (g & 0x10) >> 4
+        g1 = (g & 0x08) >> 3
+        g0 = (g & 0x04) >> 2
+        
+        b4 = (b & 0x80) >> 7
+        b3 = (b & 0x40) >> 6
+        b2 = (b & 0x20) >> 5
+        b1 = (b & 0x10) >> 4
+        b0 = (b & 0x08) >> 3
+        
+        rgb565 = ((g2 << 15) | (g1 << 14) | (g0 << 13) |
+                  (b4 << 12) | (b3 << 11) | (b2 << 10) | (b1 << 9) |(b0 << 8) |
+                  (r4 << 7) | (r3 << 6) | (r2 << 5) | (r1 << 4) | (r0 << 3) |
+                  (g5 << 2) | (g4 << 1) | g3 )
+                                    
+        return int(rgb565)
+
+
     # Constructor
     def __init__(self):
 
         self.width = 240
         self.height = 135
-        self.red   =   0x07E0
-        self.green =   0x001f
-        self.blue  =   0xf800
-        self.white =   0xffff
-        self.black =   0x0000
-        self.amber =   0x07FC
-        self.yellow=   0x07FF
+        self.red   =   self.rgb_to_int(255,0,0)
+        self.green =   self.rgb_to_int(0,255,0)
+        self.blue  =   self.rgb_to_int(0,255,0)
+        self.white =   self.rgb_to_int(255,255,255)
+        self.black =   self.rgb_to_int(0,0,0)
+
+        self.amber =   self.rgb_to_int(255,64,0)
+        self.yellow=   self.rgb_to_int(255,255,0)
+        self.cyan  =   self.rgb_to_int(0,255,255)
+        
         self.text_fg = self.amber
-        #self.text_bg = 0x0120
         self.text_bg = self.black
         
         self.selected_digit = 0;
@@ -288,11 +320,11 @@ class Display(framebuf.FrameBuffer):
     # Wiggle the LCD reset pins
     def reset_all(self):
         self.rst(1)
-        time.sleep(0.01)
+        time.sleep(0.25)
         self.rst(0)
-        time.sleep(0.01)
+        time.sleep(0.1)
         self.rst(1)
-        time.sleep(0.01)
+        time.sleep(0.25)
 
 
     # Initialise the currently selected LCD
@@ -405,7 +437,7 @@ class Display(framebuf.FrameBuffer):
 
     # Displays a single character.
     # The coordinates are for the bottom left of the character
-    def print_char(self,letter, left, top, col):
+    def print_char(self, letter, left, top, col):
         code = ord(letter) * 5    # 5 bytes per character
         for ii in range(5):
             line = FONT[code + 4 - ii]
@@ -442,7 +474,7 @@ class Display(framebuf.FrameBuffer):
 
 
     # Displays up to six short words of text on the current LCD, centred X and Y
-    def display_text(self,line):
+    def display_text(self,line,colour):
         self.fill(self.text_bg)
         words = line.split(" ")
         height = len(words) * 32
@@ -453,7 +485,7 @@ class Display(framebuf.FrameBuffer):
             left = int((self.height - width)/2)-4
             
             for letter in word:
-                self.print_char(letter, left, top, self.text_fg)
+                self.print_char(letter, left, top, colour)
                 left = left + 24
                 
             top = top - 40        
@@ -470,7 +502,7 @@ class Display(framebuf.FrameBuffer):
     #
     # see https://www.penguintutor.com/programming/picodisplayanimations
     # for a python program to generate the files in the correct format.
-    def display_digit (self, num):
+    def display_digit_nixie (self, num):
         
         if num is not None:
             position = 0
@@ -488,5 +520,68 @@ class Display(framebuf.FrameBuffer):
             self.fill(self.black)
         
         self.show()
+        
+
+    # Display single digits as dots on a 5x7 matrix
+    def display_dots(self, digit, colour):
+                   
+        self.display_7seg(digit, colour)
+        return
+        
+        # Create a small buffer and draw the pixel shape into it
+        pixelsize = 24
+        fb = framebuf.FrameBuffer(bytearray(pixelsize*pixelsize*2), pixelsize, pixelsize, framebuf.RGB565)
+        fb.ellipse(12,12,11,11,colour, True)
+         
+        # copy the pixel buffer into the LCD frame buffer for each lit dot
+        self.fill(self.black)
+        code = (ord("0") + int(digit)) * 5    # 5 bytes per character
+        for ii in range(5):
+            line = FONT[code + 4 - ii]
+            for yy in range(8):
+                if (line >> yy) & 0x1:
+                    # add the pixel with a little spacing
+                    self.blit(fb, yy*(pixelsize+6)+20, ii*pixelsize+6)
+ 
+        self.show()
+        
 
 
+    def display_7seg(self, digit, colour):
+        digits = [0b1111110, # 0
+                  0b0110000, # 1
+                  0b1101101, # 2
+                  0b1111001, # 3
+                  0b0110011, # 4
+                  0b1011011, # 5
+                  0b0011111, # 6
+                  0b1110000, # 7
+                  0b1111111, # 8
+                  0b1110011] # 9
+                
+        self.fill(self.black)
+        
+        segments = digits[int(digit)]
+    
+        if (segments & 0x40) > 0:  # segment A
+            self.rect(0,0,24,135, colour, True)
+
+        if (segments & 0x20) > 0:  # segment B
+            self.rect(0,0,120,24, colour, True)
+
+        if (segments & 0x10) > 0:  # segment C
+            self.rect(116,0,120,24, colour, True)
+            
+        if (segments & 0x08) > 0:  # segment D
+            self.rect(219,0,24,135, colour, True)
+            
+        if (segments & 0x04) > 0:  # segment E
+            self.rect(116,115,120,24, colour, True)
+            
+        if (segments & 0x02) > 0:  # segment F
+            self.rect(0,115,120,24, colour, True)
+            
+        if (segments & 0x01) > 0:  # segment G
+            self.rect(110,0,24,135, colour, True)
+            
+        self.show()

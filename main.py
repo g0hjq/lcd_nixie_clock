@@ -32,7 +32,7 @@ def get_button():
     else:
         return None
 
-
+    
     
 def adjust_simple_setting(setting_name, min_value, max_value, display_function):
     value = settings.get_setting(setting_name)
@@ -46,8 +46,9 @@ def adjust_simple_setting(setting_name, min_value, max_value, display_function):
 def display_int(number, position, digits):
     for i in range(position+digits-1, position-1, -1):
         LCD.select_digit(i)
-        LCD.display_digit(number%10)
+        LCD.display_dots(number%10, fg_colour)
         number = number / 10
+        
 
 
 # Allows the user to change a setting value with the up and down buttons.
@@ -68,6 +69,7 @@ def set(initial_value, min_value, max_value, display_function):
         if (new_value != previous_value):
             if (display_function):
                 display_function(new_value)
+                time.sleep(0.2)
 
             previous_value = new_value            
 
@@ -88,7 +90,7 @@ def set(initial_value, min_value, max_value, display_function):
                 
         elif (btn == "M"):  # Mode Button Pressed
             break
-        
+
         else:
             time.sleep(0.1)
         
@@ -201,7 +203,7 @@ def set_minute():
 
 
 def set_brightness():    
-    _, timeout = adjust_simple_setting("backlight", 0, 10, fn_display_backlight)
+    _, timeout = adjust_simple_setting("backlight", 1, 10, fn_display_backlight)
     
     if (timeout):
         return("Time")
@@ -229,8 +231,11 @@ def set_12_24():
 
 
 def set_show_seconds():
-    adjust_simple_setting("show_secs", 0, 1, fn_display_true_false)
-    return("Adjust Timing")
+    _, timeout = adjust_simple_setting("show_secs", 0, 1, fn_display_true_false)
+    if (timeout):
+        return("Time")
+    else:
+        return("Adjust Timing")
 
 
 def set_adjust_timing():
@@ -250,17 +255,19 @@ def set_adjust_timing():
 def show_digit_if_changed(num, pos):
     global previous_digits
     
-    if num is None:
-        if previous_digits[pos] is not None:
-            previous_digits[pos] = None
+    if num != previous_digits[pos]:
+        
+        LCD.select_digit(pos)
+
+        if num is None:
             LCD.fill(LCD.black)
-            LCD.show()            
-    else:
-        x = int(num)
-        if x != previous_digits[pos]:
+            previous_digits[pos] = None
+        else:
+            x = int(num)
+            LCD.display_dots(x, fg_colour)
             previous_digits[pos] = x
-            LCD.select_digit(pos)
-            LCD.display_digit(x)
+        
+        LCD.show()            
 
     
 # 4-digit mode : display hours, minutes and flashing colon
@@ -274,13 +281,13 @@ def show_time_4_digits(hr, min, sec):
         if bool(settings.get_setting("alarm_on")):            
             LCD.display_text("Alarm ON  {0}:{1:02d}".
                 format(settings.get_setting("alarm_hour"),
-                       settings.get_setting("alarm_min")))
+                       settings.get_setting("alarm_min")), fg_colour)
         else:
-            LCD.display_text("Alarm OFF")
+            LCD.display_text("Alarm OFF", fg_colour)
         
         LCD.select_digit(4)
         previous_digits[4] = x
-        LCD.display_digit(x)
+        LCD.display_dots(x,fg_colour)
         
     # Show tens of minute
     show_digit_if_changed(min/10, 3)
@@ -289,18 +296,20 @@ def show_time_4_digits(hr, min, sec):
     LCD.select_digit(2)
     LCD.fill(LCD.black)
     if (sec % 2) > 0:
-        LCD.ellipse(80, 70, 12, 12, LCD.amber, True)
-        LCD.ellipse(150, 70, 12, 12, LCD.amber, True)
-
+        LCD.ellipse(80, 70, 12, 12, fg_colour, True)
+        LCD.ellipse(150, 70, 12, 12, fg_colour, True)
     LCD.show()
 
     # show hour. Suppress leading zero if in 12 hour mode
     show_digit_if_changed(hr%10, 1)
     
-    if (settings.get_setting("24_hour")==0) or (hr>9):
+    if (settings.get_setting("24_hour")==1) or (hr>9):
         show_digit_if_changed(hr/10, 0)
     else:
         show_digit_if_changed(None, 0)
+
+    LCD.show()
+
         
         
 # 4-digit mode : display hours, minutes and seconds
@@ -312,26 +321,6 @@ def show_time_6_digits(hr, mins, sec):
     show_digit_if_changed(mins/10, 2)
     show_digit_if_changed(hr%10, 1)
     show_digit_if_changed(hr/10, 0)
-
-
-# Displays the time in 12 or 24 hour, 4 or 6 digit mode
-def show_time_4_or_6_digits(hr24,min,sec):
-    hr = hr24
-        
-    if settings.get_setting("24_hour"):
-        # 24 hour clock. Show time as 0-23
-        hr = hr24
-    else:
-        # 12 hour clock. Show time as 1-12
-        hr = hr24 % 12                
-        if (hr == 0):                
-            hr = 12
-
-    if settings.get_setting("show_secs") == 1:            
-        show_time_6_digits(hr,min,sec)
-    else:
-        show_time_4_digits(hr,min,sec)
-
 
 
 
@@ -348,7 +337,7 @@ def show_time():
     
     sound_alarm = False    
     tick = True
-    previous_digits = [-1,-1,-1,-1,-1,-1]
+    previous_digits = [None,None,None,None,None,None]
     
     while True:
         
@@ -380,9 +369,24 @@ def show_time():
                     time.sleep(0.05)
                 buzzer.duty_u16(0)
                     
-            show_time_4_or_6_digits(hr24, min, sec)
-            
+            # Display the current time
+            hr = hr24
+                
+            if settings.get_setting("24_hour"):
+                # 24 hour clock. Show time as 0-23
+                hr = hr24
+            else:
+                # 12 hour clock. Show time as 1-12
+                hr = hr24 % 12                
+                if (hr == 0):                
+                    hr = 12
 
+            if settings.get_setting("show_secs") == 1:            
+                show_time_6_digits(hr,min,sec)
+            else:
+                show_time_4_digits(hr,min,sec)
+
+            
         # Here would be a good place to animate the LEDs etc
         
         if sound_alarm:            
@@ -424,7 +428,9 @@ rtc_1Hz_pin   = Pin(settings.RTC_1HZ_PIN, Pin.IN)
 LCD = display.Display()
 RTC = ds3231.DS3231(add = 0x68)
 RTC.Set_Timing(settings.get_setting("adjust_timing"))
-               
+
+fg_colour = LCD.yellow
+
 buzzer = PWM(Pin(settings.BUZZER_PIN, Pin.OUT))
 buzzer.duty_u16(0)
 
@@ -442,12 +448,13 @@ tick = True
 while True:
     LCD.set_backlight(settings.get_setting("backlight"))
     LCD.clear()
-    
+
+
     if (mode == "Time"):
         mode = show_time()
     else:
         LCD.select_digit(0)
-        LCD.display_text(mode)
+        LCD.display_text(mode, fg_colour)
 
         if mode == "Alarm On/ Off":
             mode = set_alarm_on_off()
@@ -482,5 +489,6 @@ while True:
         else:
             print("Unexpected mode :",mode)
             mode = "Time"
+    
     
 # The end.
