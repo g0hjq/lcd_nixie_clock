@@ -1,23 +1,11 @@
-#=========================================================================================    
-# This code runs on the second core of the Raspberry Pi Pico.
-#
-# Its job is to animate the neopixel LEDs and sound the alarm buzzer in the background
-#
-# Communication with the main thread is through the global variables
-#    led_mode
-#    led_mode_changed
-#    alarm_soundings
-#    settings
-#=========================================================================================    
-
 from machine import Pin
 import neopixel
 import settings
 
 
-led_strip = neopixel.NeoPixel(Pin(settings.NEOPIXEL_PIN), 6)
+rgb_strip = neopixel.NeoPixel(Pin(settings.NEOPIXEL_PIN), 6)
 
-full = 50
+full = 40   # RGB LCD brightness. 10=low, 255=max.
 half = int(full / 2)
     
     
@@ -80,61 +68,61 @@ def colourHSV(hue, sat, val):
 
 
 
-def set_led_pattern(ledmode):
+def set_rgb_pattern(rgbmode):
             
-    if ledmode == 0:	# off
-        led_strip.fill((0,0,0))
-        led_strip.write()
+    if rgbmode == 0:	# off
+        rgb_strip.fill((0,0,0))
+        rgb_strip.write()
 
-    elif ledmode == 1:	# red
-        led_strip.fill((full,0,0))
-        led_strip.write()
+    elif rgbmode == 1:	# red
+        rgb_strip.fill((full,0,0))
+        rgb_strip.write()
 
-    elif ledmode == 2: # green
-        led_strip.fill((0,full,0))
-        led_strip.write()
+    elif rgbmode == 2: # green
+        rgb_strip.fill((0,full,0))
+        rgb_strip.write()
 
-    elif ledmode == 3: # blue
-        led_strip.fill((0,0,full))
-        led_strip.write()
+    elif rgbmode == 3: # blue
+        rgb_strip.fill((0,0,full))
+        rgb_strip.write()
 
-    elif ledmode == 4: # yellow
-        led_strip.fill((half,half,0))
-        led_strip.write()
+    elif rgbmode == 4: # yellow
+        rgb_strip.fill((half,half,0))
+        rgb_strip.write()
 
-    elif ledmode == 5: # cyan
-        led_strip.fill((0,half,half))
-        led_strip.write()
+    elif rgbmode == 5: # cyan
+        rgb_strip.fill((0,half,half))
+        rgb_strip.write()
 
-    elif ledmode == 6: # magenta
-        led_strip.fill((half,0,half))
-        led_strip.write()
+    elif rgbmode == 6: # magenta
+        rgb_strip.fill((half,0,half))
+        rgb_strip.write()
 
-    elif ledmode == 7: # amber
-        led_strip.fill((50,6,0))
-        led_strip.write()
+    elif rgbmode == 7: # amber
+        rgb_strip.fill((50,6,0))
+        rgb_strip.write()
 
-    elif ledmode == 8: # whiteish
-        led_strip.fill((int(2.0*half), half, int(0.5*half)))
-        led_strip.write()
+    elif rgbmode == 8: # whiteish
+        rgb_strip.fill((int(2.0*half), half, int(0.5*half)))
+        rgb_strip.write()
         
-    elif ledmode == 9:   # rainbow
+    elif rgbmode == 9:   # rainbow
         hue = 0
         for i in range(0,6):
-            led_strip.__setitem__(i,colourHSV(hue, 255, full))
+            rgb_strip.__setitem__(i,colourHSV(hue, 255, full))
             hue = hue + 10000         # difference of colurs between LEDs                    
-        led_strip.write()
+        rgb_strip.write()
 
-    elif ledmode == 10:   # red/blue alternate
+    elif rgbmode == 10:   # red/blue alternate
         colour1 = (full,0,0)
         colour2 = (0,0,full)
-        led_strip.__setitem__(0,colour1)
-        led_strip.__setitem__(1,colour2)
-        led_strip.__setitem__(2,colour1)
-        led_strip.__setitem__(3,colour2)
-        led_strip.__setitem__(4,colour1)
-        led_strip.__setitem__(5,colour2)
-        led_strip.write()
+        rgb_strip.__setitem__(0,colour1)
+        rgb_strip.__setitem__(1,colour2)
+        rgb_strip.__setitem__(2,colour1)
+        rgb_strip.__setitem__(3,colour2)
+        rgb_strip.__setitem__(4,colour1)
+        rgb_strip.__setitem__(5,colour2)
+        rgb_strip.write()
                                     
  
  

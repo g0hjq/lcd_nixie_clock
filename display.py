@@ -237,9 +237,10 @@ class Display(framebuf.FrameBuffer):
         self.rst = Pin(settings.RST_PIN,Pin.OUT)        
         self.bl  = Pin(settings.BL_PIN)        
         
+        # set the LCD backlight level
         self.pwm = PWM(self.bl)
         self.pwm.freq(1000)
-        self.set_backlight(100)
+        self.set_brightness(10)
         
         # Use Hardware SPI for speed. 
         self.spi = SPI(1,
@@ -266,23 +267,24 @@ class Display(framebuf.FrameBuffer):
             self.select_digit(digit)
             self.init()
             
+        self.set_font(settings.get_setting("font"))
+        
         self.clear()
         
 
     # Change the backlight level from 0 to 10
-    def set_backlight(self, percent):        
-        if (percent < 0):
-            percent = 0
+    def set_brightness(self, level):        
+        if (level < 0):
+            level = 0
             
-        if (percent > 10):
-            percent = 10            
+        if (level > 10):
+            level = 10            
             
-        self.pwm.duty_u16(6550*percent)
+        self.pwm.duty_u16(6550*level)
     
     
     # Selects the current digit from 0 (left) to 5 (right)
     def select_digit(self, num):
-        global selected_digit
         self.selected_digit = 5-num
          
 
@@ -320,11 +322,11 @@ class Display(framebuf.FrameBuffer):
     # Wiggle the LCD reset pins
     def reset_all(self):
         self.rst(1)
-        time.sleep(0.25)
+        time.sleep(0.01)
         self.rst(0)
-        time.sleep(0.1)
+        time.sleep(0.01)
         self.rst(1)
-        time.sleep(0.25)
+        time.sleep(0.01)
 
 
     # Initialise the currently selected LCD
@@ -474,8 +476,10 @@ class Display(framebuf.FrameBuffer):
 
 
     # Displays up to six short words of text on the current LCD, centred X and Y
-    def display_text(self,line,colour):
-        self.fill(self.text_bg)
+    def display_text(self,line):
+        
+        self.fill(self.black)
+        
         words = line.split(" ")
         height = len(words) * 32
         top = int(self.width/2 + height/2) - 20
@@ -485,7 +489,7 @@ class Display(framebuf.FrameBuffer):
             left = int((self.height - width)/2)-4
             
             for letter in word:
-                self.print_char(letter, left, top, colour)
+                self.print_char(letter, left, top, self.fg_colour)
                 left = left + 24
                 
             top = top - 40        
@@ -502,7 +506,7 @@ class Display(framebuf.FrameBuffer):
     #
     # see https://www.penguintutor.com/programming/picodisplayanimations
     # for a python program to generate the files in the correct format.
-    def display_digit_nixie (self, num):
+    def display_nixie (self, num):
         
         if num is not None:
             position = 0
@@ -523,15 +527,12 @@ class Display(framebuf.FrameBuffer):
         
 
     # Display single digits as dots on a 5x7 matrix
-    def display_dots(self, digit, colour):
-                   
-        self.display_7seg(digit, colour)
-        return
-        
+    def display_dots(self, digit):
+                           
         # Create a small buffer and draw the pixel shape into it
         pixelsize = 24
         fb = framebuf.FrameBuffer(bytearray(pixelsize*pixelsize*2), pixelsize, pixelsize, framebuf.RGB565)
-        fb.ellipse(12,12,11,11,colour, True)
+        fb.ellipse(12, 12, 11, 11, self.fg_colour, True)
          
         # copy the pixel buffer into the LCD frame buffer for each lit dot
         self.fill(self.black)
@@ -547,7 +548,7 @@ class Display(framebuf.FrameBuffer):
         
 
 
-    def display_7seg(self, digit, colour):
+    def display_7seg(self, digit):
         digits = [0b1111110, # 0
                   0b0110000, # 1
                   0b1101101, # 2
@@ -564,24 +565,82 @@ class Display(framebuf.FrameBuffer):
         segments = digits[int(digit)]
     
         if (segments & 0x40) > 0:  # segment A
-            self.rect(0,0,24,135, colour, True)
+            self.rect(0,0,24,135, self.fg_colour, True)
 
         if (segments & 0x20) > 0:  # segment B
-            self.rect(0,0,120,24, colour, True)
+            self.rect(0,0,120,24, self.fg_colour, True)
 
         if (segments & 0x10) > 0:  # segment C
-            self.rect(116,0,120,24, colour, True)
+            self.rect(116,0,120,24, self.fg_colour, True)
             
         if (segments & 0x08) > 0:  # segment D
-            self.rect(219,0,24,135, colour, True)
+            self.rect(219,0,24,135, self.fg_colour, True)
             
         if (segments & 0x04) > 0:  # segment E
-            self.rect(116,115,120,24, colour, True)
+            self.rect(116,115,120,24, self.fg_colour, True)
             
         if (segments & 0x02) > 0:  # segment F
-            self.rect(0,115,120,24, colour, True)
+            self.rect(0,115,120,24, self.fg_colour, True)
             
         if (segments & 0x01) > 0:  # segment G
-            self.rect(110,0,24,135, colour, True)
+            self.rect(110,0,24,135, self.fg_colour, True)
             
         self.show()
+        
+    def set_font(self, font):
+                
+        if font==1:
+            self.font_style = "Nixie"
+            self.fg_colour = self.amber
+        elif font==2:
+            self.font_style = "Dots"
+            self.fg_colour = self.yellow
+        elif font==3:
+            self.font_style = "Dots"
+            self.fg_colour = self.green
+        elif font==4:
+            self.font_style = "Dots"
+            self.fg_colour = self.cyan
+        elif font==5:
+            self.font_style = "Dots"
+            self.fg_colour = self.white
+        elif font==6:
+            self.font_style = "7seg"
+            self.fg_colour = self.red
+        elif font==7:
+            self.font_style = "7seg"
+            self.fg_colour = self.green
+        elif font==8:
+            self.font_style = "7seg"
+            self.fg_colour = self.cyan
+        elif font==9:
+            self.font_style = "7seg"
+            self.fg_colour = self.white
+        else:
+            print("Invalid font number:",font)
+        
+    
+    def display_digit(self, digit):
+        if self.font_style == "Nixie":
+            self.display_nixie(digit)
+            
+        elif self.font_style == "Dots":
+            self.display_dots(digit)
+            
+        else:
+            self.display_7seg(digit)
+
+
+    def show_colon(self, digit, visible):
+        self.select_digit(digit)
+        self.fill(self.black)
+        
+        if visible:
+            self.ellipse(80, 70, 12, 12, self.fg_colour, True)
+            self.ellipse(150, 70, 12, 12, self.fg_colour, True)
+            
+        self.show()
+        
+            
+                           
+        

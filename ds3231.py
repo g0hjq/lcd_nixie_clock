@@ -64,6 +64,7 @@ class DS3231:
         assert (trim >= 0) and (trim <= 255), "'Set Timing' trim value {0} is out of range".format(trim)
 
         b = bytes([trim-128 & 0xff])
+        print("Setting DS3231 Ageing Offset to 0x{0:02X}".format(b[0]))
         self.Write_Reg(Aging_Reg, b[0])    
         
 
@@ -119,8 +120,8 @@ class DS3231:
         return self.BCD_Convert_DEC(self.Read_Reg(Hour_Reg) & 0x3F)
 
     '''Min            0x01                               '''
-    def Set_Time_Min(self, min):
-        data = self.DEC_Convert_BCD(min)
+    def Set_Time_Min(self, minute):
+        data = self.DEC_Convert_BCD(minute)
         self.Write_Reg(Min_Reg, data & 0x7F)
         
     def Read_Time_Min (self):
@@ -128,6 +129,7 @@ class DS3231:
 
     '''Sec            0x00                               '''
     def Set_Time_Sec(self, sec):
+        print("Setting second=",sec)
         data = self.DEC_Convert_BCD(sec)
         self.Write_Reg(Seconds_Reg,data & 0x7F)
     

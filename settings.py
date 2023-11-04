@@ -28,13 +28,15 @@ BUZZER_PIN = 14
 NEOPIXEL_PIN = 22
 RTC_1HZ_PIN = 18
 
+
 # Global Variables
 settings = {
     "alarm_hour": 7,
     "alarm_min": 30,
     "alarm_on": 0,
-    "backlight" : 5,
-    "led_mode": 1,
+    "font": 1,
+    "brightness" : 5,
+    "rgb_mode": 1,
     "24_hour" : 1,
     "show_secs" : 1,
     "adjust_timing" : 128

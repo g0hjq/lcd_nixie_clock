@@ -46,7 +46,7 @@ def adjust_simple_setting(setting_name, min_value, max_value, display_function):
 def display_int(number, position, digits):
     for i in range(position+digits-1, position-1, -1):
         LCD.select_digit(i)
-        LCD.display_dots(number%10, fg_colour)
+        LCD.display_digit(number%10)
         number = number / 10
         
 
@@ -76,19 +76,19 @@ def set(initial_value, min_value, max_value, display_function):
         # Respond to any button pressed
         btn = get_button()
                     
-        if (btn == "L"):  # UP Button Pressed
+        if (btn == "L"):  # UP Button Pressed. Increment the value
             start_time = time.ticks_ms() 
             new_value = new_value+1
             if (new_value > max_value):
                 new_value = min_value
                 
-        elif (btn == "R"):  # DOWN button pressed
+        elif (btn == "R"):  # DOWN button pressed. Decrement the value
             start_time = time.ticks_ms() 
             new_value = new_value-1
             if (new_value < min_value):
                 new_value = max_value
                 
-        elif (btn == "M"):  # Mode Button Pressed
+        elif (btn == "M"):  # Mode Button Pressed. Return
             break
 
         else:
@@ -109,13 +109,13 @@ def set(initial_value, min_value, max_value, display_function):
 #===================================================================
 #===================================================================
 
-def fn_display_backlight(value):
-    LCD.set_backlight(value)        
+def fn_display_brightness(value):
+    LCD.set_brightness(value)        
     display_int(value,4,2)
     
 
-def fn_display_led_mode(value):
-    leds.set_led_pattern(value)
+def fn_display_rgb_mode(value):
+    leds.set_rgb_pattern(value)
     display_int(value,4,2)
   
   
@@ -130,17 +130,29 @@ def fn_display_12_24(value):
         display_int(24,4,2)
 
 
+def fn_display_font(value):
+    LCD.set_font(value)
+    display_int(value,4,2)
+    LCD.select_digit(0)
+    LCD.display_text(mode)
+
+    
 def fn_display_hour(value):
     display_int(value,2,2)
     
-  
+    
 def fn_display_min(value):
     display_int(value,4,2)
-
+  
+  
+def fn_display_sec(value):
+    display_int(value,4,2)
+  
 
 def fn_display_adjust_timing(value):    
     RTC.Set_Timing(value)
     display_int(value,3,3)
+   
    
 #==============================================================================
 #==============================================================================
@@ -149,10 +161,7 @@ def fn_display_adjust_timing(value):
 #==============================================================================
 #==============================================================================
 #==============================================================================
-
-
-
-        
+      
 def set_alarm_on_off():
     _, timeout = adjust_simple_setting("alarm_on", 0, 1, fn_display_true_false)
     
@@ -192,28 +201,49 @@ def set_hour():
         
         
 def set_minute():
-    _,min,_ = RTC.Read_Time()
-    new_value, timeout = set(min, 0, 59, fn_display_min)
+    _,minute,_ = RTC.Read_Time()
+    new_value, timeout = set(minute, 0, 59, fn_display_min)
     RTC.Set_Time_Min(new_value)
     
     if (timeout):
         return("Time")
     else:
-        return("Set Back Light")
+        return("Set Second")
 
-
-def set_brightness():    
-    _, timeout = adjust_simple_setting("backlight", 1, 10, fn_display_backlight)
+        
+def set_second():
+    _,_,second = RTC.Read_Time()
+    old_value = second
+    new_value, timeout = set(second, 0, 59, fn_display_sec)
+    if new_value != old_value:
+        RTC.Set_Time_Sec(new_value)
     
     if (timeout):
         return("Time")
     else:
-        return("Set LED Mode")
-
-
-def set_led_mode():
+        return("Set Font")
+        
+def set_font():
+    _, timeout = adjust_simple_setting("font", 1, 9, fn_display_font)
     
-    _, timeout = adjust_simple_setting("led_mode", 0, 10, fn_display_led_mode)
+    if (timeout):
+        return("Time")
+    else:
+        return("Set Light Level")
+
+
+def set_brightness():    
+    _, timeout = adjust_simple_setting("brightness", 1, 10, fn_display_brightness)
+    
+    if (timeout):
+        return("Time")
+    else:
+        return("Set RGB Mode")
+
+
+def set_rgb_mode():
+    
+    _, timeout = adjust_simple_setting("rgb_mode", 0, 10, fn_display_rgb_mode)
 
     if (timeout):
         return("Time")
@@ -264,7 +294,7 @@ def show_digit_if_changed(num, pos):
             previous_digits[pos] = None
         else:
             x = int(num)
-            LCD.display_dots(x, fg_colour)
+            LCD.display_digit(x)
             previous_digits[pos] = x
         
         LCD.show()            
@@ -281,24 +311,19 @@ def show_time_4_digits(hr, min, sec):
         if bool(settings.get_setting("alarm_on")):            
             LCD.display_text("Alarm ON  {0}:{1:02d}".
                 format(settings.get_setting("alarm_hour"),
-                       settings.get_setting("alarm_min")), fg_colour)
+                       settings.get_setting("alarm_min")))
         else:
-            LCD.display_text("Alarm OFF", fg_colour)
+            LCD.display_text("Alarm OFF")
         
         LCD.select_digit(4)
         previous_digits[4] = x
-        LCD.display_dots(x,fg_colour)
+        LCD.display_digit(x)
         
     # Show tens of minute
     show_digit_if_changed(min/10, 3)
 
     # show blinking colon
-    LCD.select_digit(2)
-    LCD.fill(LCD.black)
-    if (sec % 2) > 0:
-        LCD.ellipse(80, 70, 12, 12, fg_colour, True)
-        LCD.ellipse(150, 70, 12, 12, fg_colour, True)
-    LCD.show()
+    LCD.show_colon(2, sec%2)
 
     # show hour. Suppress leading zero if in 12 hour mode
     show_digit_if_changed(hr%10, 1)
@@ -356,16 +381,16 @@ def show_time():
                                 
             if sound_alarm:
                 if (sec % 2) == 0:
-                    leds.led_strip.fill((255,255,255))
+                    leds.rgb_strip.fill((255,255,255))
                 else:
-                    leds.led_strip.fill((0,0,0))
-                leds.led_strip.write()
+                    leds.rgb_strip.fill((0,0,0))
+                leds.rgb_strip.write()
                 
                 buzzer.duty_u16(32768)
                 for i in range(0,4):
-                    buzzer.freq(2000)
+                    buzzer.freq(1500)
                     time.sleep(0.05)
-                    buzzer.freq(1800)
+                    buzzer.freq(2400)
                     time.sleep(0.05)
                 buzzer.duty_u16(0)
                     
@@ -395,7 +420,7 @@ def show_time():
                 # Stop the alarm
                 sound_alarm = False
                 buzzer.duty_u16(0)
-                leds.set_led_pattern(settings.get_setting("led_mode"))
+                leds.set_rgb_pattern(settings.get_setting("rgb_mode"))
                 
                 # Wait for button release
                 while True:
@@ -418,7 +443,7 @@ def show_time():
 #=======================================================================
 
 settings.load_settings()
-leds.set_led_pattern(settings.get_setting("led_mode"))
+leds.set_rgb_pattern(settings.get_setting("rgb_mode"))
 
 btn_mode_pin  = Pin(settings.MODE_PIN, Pin.IN)
 btn_left_pin  = Pin(settings.LEFT_PIN, Pin.IN)
@@ -426,10 +451,10 @@ btn_right_pin = Pin(settings.RIGHT_PIN, Pin.IN)
 rtc_1Hz_pin   = Pin(settings.RTC_1HZ_PIN, Pin.IN)
 
 LCD = display.Display()
+LCD.set_font(settings.get_setting("font"))
+
 RTC = ds3231.DS3231(add = 0x68)
 RTC.Set_Timing(settings.get_setting("adjust_timing"))
-
-fg_colour = LCD.yellow
 
 buzzer = PWM(Pin(settings.BUZZER_PIN, Pin.OUT))
 buzzer.duty_u16(0)
@@ -446,7 +471,7 @@ tick = True
 
 
 while True:
-    LCD.set_backlight(settings.get_setting("backlight"))
+    LCD.set_brightness(settings.get_setting("brightness"))
     LCD.clear()
 
 
@@ -454,7 +479,7 @@ while True:
         mode = show_time()
     else:
         LCD.select_digit(0)
-        LCD.display_text(mode, fg_colour)
+        LCD.display_text(mode)
 
         if mode == "Alarm On/ Off":
             mode = set_alarm_on_off()
@@ -471,11 +496,17 @@ while True:
         elif mode == "Set Min":
             mode = set_minute()
             
-        elif mode == "Set Back Light":
+        elif mode == "Set Second":
+            mode = set_second()
+            
+        elif mode == "Set Font":
+            mode = set_font()
+            
+        elif mode == "Set Light Level":
             mode = set_brightness()
             
-        elif mode == "Set LED Mode":
-            mode = set_led_mode()
+        elif mode == "Set RGB Mode":
+            mode = set_rgb_mode()
             
         elif mode == "Set 12/24 Hours":
             mode = set_12_24()
